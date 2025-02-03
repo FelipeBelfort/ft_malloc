@@ -58,7 +58,94 @@ void	*malloc(size_t size)
 	if (size <= SMALL_SIZE)
 		block = get_free_block(size);
 	else
-		block = create_large_zone(size + sizeof(t_block) + sizeof(t_zone));
+		block = create_large_zone(size + BLOCK_SIZE + sizeof(t_zone));
 	block->free = 0;
-	return (void *)((char *)block + sizeof(t_block));
+	return (void *)((char *)block + BLOCK_SIZE);
+}
+
+void	*calloc(size_t count, size_t size)
+{
+	size_t	tot_size;
+	char	*ptr;
+
+	tot_size = count * size;
+	ptr = malloc(tot_size);
+	while (--tot_size >= 0)
+		*(ptr + tot_size) = 0;
+
+	return ptr;
+}
+
+void	free(void *ptr)
+{
+	t_block	*curr_block;
+	t_zone	*curr_zone;
+	t_zone	*head_zone = NULL;
+
+	curr_block = (char *)ptr - BLOCK_SIZE;
+	curr_block->free = 1;
+
+	if (curr_block->size > SMALL_SIZE)
+	{
+		if (g_heap->large->blocks->free)
+			g_heap->large = g_heap->large->next;
+		else
+			head_zone = g_heap->large;
+
+		while (head_zone)
+		{
+			if (head_zone->next->blocks->free)
+			{
+				head_zone->next = head_zone->next->next;
+				break;
+			}
+			head_zone = head_zone->next;
+		}
+	// if (curr_block->size > SMALL_SIZE)
+	// {
+	// 	head_zone = g_heap->large;
+	// 	curr_zone = curr_block - sizeof(t_zone);
+	// 	if (head_zone == curr_zone)
+	// 		g_heap->large = g_heap->large->next;
+	// 	while (head_zone && head_zone != curr_zone)
+	// 	{
+	// 		if (head_zone->next == curr_zone)
+	// 		{
+	// 			head_zone->next = head_zone->next->next;
+	// 			break;
+	// 		}
+	// 		head_zone = head_zone->next;
+	// 	}
+		munmap(curr_zone, curr_block->size + BLOCK_SIZE + sizeof(t_zone)); //pagesize()?
+	}
+	else
+	{
+		zone_collapse();
+	}
+	return;
+}
+
+void	*realloc(void *ptr, size_t new_size)
+{
+	t_block	*curr_block;
+	char	*new_ptr;
+	char	*curr_ptr;
+	size_t	old_size;
+
+	curr_ptr = (char *)ptr;
+	curr_block = curr_ptr - BLOCK_SIZE;
+	old_size = curr_block->size;
+	if (curr_block->size == new_size)
+		return ptr;
+	new_ptr = block_expand(curr_block, new_size);
+	if (!new_ptr)
+	{
+		new_ptr = malloc(new_size);
+		for (size_t i = 0; i < old_size; i++) // update to add security
+			new_ptr[i] = curr_ptr[i];
+
+		free(ptr);
+	}
+
+	return new_ptr;
 }

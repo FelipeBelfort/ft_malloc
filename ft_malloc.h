@@ -35,6 +35,7 @@
 # define SMALL_SIZE 1024
 # define TINY_ZONE_SIZE ((TINY_SIZE * 100) + sizeof(t_block) + sizeof(t_zone))
 # define SMALL_ZONE_SIZE ((SMALL_SIZE * 100) + sizeof(t_block) + sizeof(t_zone))
+# define BLOCK_SIZE sizeof(t_block)
 
 
 typedef struct s_block {
@@ -44,6 +45,7 @@ typedef struct s_block {
 }	t_block;
 
 typedef struct s_zone {
+	// size?
 	t_block			*blocks;
 	struct s_zone	*next;
 }	t_zone;
